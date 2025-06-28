@@ -1,7 +1,7 @@
 kivy==2.3.1
 kivymd==1.2.0
 # Google AdMob Integration
-kivmob==3.0.0
+kivmob==2.0
 # For Android builds
 buildozer==1.5.0
 # Additional dependencies
