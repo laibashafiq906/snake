@@ -112,6 +112,47 @@ jobs:
         chmod +x accept_licenses.sh
         ./accept_licenses.sh
 
+    - name: Find and List APK Files
+      run: |
+        echo "🔍 Searching for APK files..."
+        echo "📁 Current directory contents:"
+        ls -la
+        
+        echo "📁 Checking bin/ directory:"
+        if [ -d "bin" ]; then
+          ls -la bin/
+        else
+          echo "❌ bin/ directory not found"
+        fi
+        
+        echo "📁 Searching for .apk files everywhere:"
+        find . -name "*.apk" -type f 2>/dev/null | head -20
+        
+        echo "📁 Checking .buildozer directory:"
+        find .buildozer -name "*.apk" -type f 2>/dev/null | head -10
+        
+        echo "📁 Checking common buildozer output locations:"
+        find . -path "*/.buildozer/android/platform/build-*" -name "*.apk" 2>/dev/null | head -10
+        find . -path "*/.buildozer/android/app" -name "*.apk" 2>/dev/null | head -10
+
+    - name: Copy APK to bin directory
+      run: |
+        # Create bin directory if it doesn't exist
+        mkdir -p bin
+        
+        # Find the APK file
+        APK_FILE=$(find . -name "*.apk" -type f | head -1)
+        
+        if [ -n "$APK_FILE" ]; then
+          echo "✅ Found APK: $APK_FILE"
+          cp "$APK_FILE" bin/
+          echo "✅ Copied APK to bin/ directory"
+          ls -la bin/
+        else
+          echo "❌ No APK file found!"
+          exit 1
+        fi
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
