@@ -33,35 +33,84 @@ jobs:
         pip install cython==0.29.33
         pip install -r requirements.txt
 
-    - name: Setup Android SDK
+    - name: Build APK with Buildozer (Auto-accept licenses)
       run: |
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-        export ANDROID_SDK_ROOT="$HOME/android-sdk"
-        export ANDROID_HOME="$ANDROID_SDK_ROOT"
-        export PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools"
         
-        # Create directories
-        mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+        # Create a script to automatically accept all license prompts
+        cat > accept_licenses.sh << 'EOF'
+        #!/bin/bash
         
-        # Download and install command line tools
-        cd "$ANDROID_SDK_ROOT/cmdline-tools"
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip commandlinetools-linux-9477386_latest.zip
-        mv cmdline-tools latest
+        # Function to accept licenses automatically
+        accept_all_licenses() {
+            local sdk_dir="$1"
+            if [ -d "$sdk_dir" ]; then
+                mkdir -p "$sdk_dir/licenses"
+                
+                # Accept all known Android SDK licenses
+                echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$sdk_dir/licenses/android-sdk-license"
+                echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$sdk_dir/licenses/android-sdk-license"
+                echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$sdk_dir/licenses/android-sdk-preview-license"
+                echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$sdk_dir/licenses/android-sdk-preview-license-old"
+                echo "d975f751698a77b662f1254ddbeed3901e976f5a" > "$sdk_dir/licenses/intel-android-extra-license"
+                echo "e9acab5b5fbb560a72cfaecce8946896ff6aab9d" > "$sdk_dir/licenses/mips-android-sysimage-license"
+                echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$sdk_dir/licenses/google-gdk-license"
+                
+                echo "✅ Licenses pre-accepted for: $sdk_dir"
+            fi
+        }
         
-        # Accept licenses
-        mkdir -p "$ANDROID_SDK_ROOT/licenses"
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
-        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_SDK_ROOT/licenses/android-sdk-preview-license"
-
-    - name: Build APK with Buildozer
-      run: |
-        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-        export ANDROID_SDK_ROOT="$HOME/android-sdk"
-        export ANDROID_HOME="$ANDROID_SDK_ROOT"
-        export PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools"
-        buildozer android debug
+        # Monitor for SDK creation and auto-accept licenses
+        while true; do
+            # Check buildozer's default SDK path
+            if [ -d "$HOME/.buildozer/android/platform/android-sdk" ]; then
+                accept_all_licenses "$HOME/.buildozer/android/platform/android-sdk"
+            fi
+            
+            # Check for any other android-sdk directories
+            find "$HOME" -name "android-sdk" -type d 2>/dev/null | while read sdk_path; do
+                accept_all_licenses "$sdk_path"
+            done
+            
+            sleep 2
+        done &
+        LICENSE_PID=$!
+        
+        # Run buildozer with automatic "yes" responses
+        echo "🚀 Starting APK build with automatic license acceptance..."
+        
+        # Use expect to automatically answer "y" to all prompts
+        sudo apt-get install -y expect
+        
+        expect << 'EXPECT_EOF'
+        set timeout -1
+        spawn buildozer android debug
+        
+        expect {
+            "Accept? (y/N):" {
+                send "y\r"
+                exp_continue
+            }
+            "Do you accept the license" {
+                send "y\r"
+                exp_continue
+            }
+            "y/N" {
+                send "y\r"
+                exp_continue
+            }
+            eof
+        }
+        EXPECT_EOF
+        
+        # Kill the license monitoring process
+        kill $LICENSE_PID 2>/dev/null || true
+        
+        echo "✅ APK build completed!"
+        EOF
+        
+        chmod +x accept_licenses.sh
+        ./accept_licenses.sh
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
