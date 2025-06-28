@@ -24,7 +24,7 @@ jobs:
         sudo apt update
         sudo apt install -y openjdk-8-jdk build-essential libssl-dev libffi-dev python3-dev
         sudo apt install -y libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm
-        sudo apt install -y libncurses5-dev libncursesw5-dev xz-utils tk-dev
+        sudo apt install -y libncurses5-dev libncursesw5-dev xz-utils tk-dev unzip
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
     - name: Install Python dependencies
@@ -33,18 +33,34 @@ jobs:
         pip install cython==0.29.33
         pip install -r requirements.txt
 
-    - name: Accept Android SDK licenses
+    - name: Setup Android SDK
       run: |
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-        export ANDROID_HOME="$HOME/.buildozer/android/platform/android-sdk"
-        mkdir -p "$ANDROID_HOME/licenses" || true
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
-        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_HOME/licenses/android-sdk-license"
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+        export ANDROID_SDK_ROOT="$HOME/android-sdk"
+        export ANDROID_HOME="$ANDROID_SDK_ROOT"
+        export PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools"
+        
+        # Create directories
+        mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+        
+        # Download and install command line tools
+        cd "$ANDROID_SDK_ROOT/cmdline-tools"
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip commandlinetools-linux-9477386_latest.zip
+        mv cmdline-tools latest
+        
+        # Accept licenses
+        mkdir -p "$ANDROID_SDK_ROOT/licenses"
+        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
+        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
+        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_SDK_ROOT/licenses/android-sdk-preview-license"
 
     - name: Build APK with Buildozer
       run: |
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+        export ANDROID_SDK_ROOT="$HOME/android-sdk"
+        export ANDROID_HOME="$ANDROID_SDK_ROOT"
+        export PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools"
         buildozer android debug
 
     - name: Upload APK
