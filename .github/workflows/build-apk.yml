@@ -19,142 +19,57 @@ jobs:
       with:
         python-version: '3.9'
 
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '8'
+
     - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y openjdk-8-jdk build-essential libssl-dev libffi-dev python3-dev
+        sudo apt install -y build-essential libssl-dev libffi-dev python3-dev
         sudo apt install -y libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm
         sudo apt install -y libncurses5-dev libncursesw5-dev xz-utils tk-dev unzip
-        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+        sudo apt install -y zlib1g-dev autoconf automake libtool expect
+        sudo apt install -y lsb-release libtool-bin pkg-config cmake
+        sudo apt install -y libltdl-dev gettext
 
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install cython==0.29.33
-        pip install -r requirements.txt
+        pip install kivy==2.3.1
+        pip install kivymd==1.2.0
+        pip install buildozer==1.5.0
+        pip install requests==2.31.0 plyer==2.1.0 pillow==9.3.0
+        pip install https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip
 
-    - name: Build APK with Buildozer (Auto-accept licenses)
+    - name: Setup Android SDK licenses
       run: |
-        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-        
-        # Create a script to automatically accept all license prompts
-        cat > accept_licenses.sh << 'EOF'
-        #!/bin/bash
-        
-        # Function to accept licenses automatically
-        accept_all_licenses() {
-            local sdk_dir="$1"
-            if [ -d "$sdk_dir" ]; then
-                mkdir -p "$sdk_dir/licenses"
-                
-                # Accept all known Android SDK licenses
-                echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$sdk_dir/licenses/android-sdk-license"
-                echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$sdk_dir/licenses/android-sdk-license"
-                echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$sdk_dir/licenses/android-sdk-preview-license"
-                echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$sdk_dir/licenses/android-sdk-preview-license-old"
-                echo "d975f751698a77b662f1254ddbeed3901e976f5a" > "$sdk_dir/licenses/intel-android-extra-license"
-                echo "e9acab5b5fbb560a72cfaecce8946896ff6aab9d" > "$sdk_dir/licenses/mips-android-sysimage-license"
-                echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$sdk_dir/licenses/google-gdk-license"
-                
-                echo "✅ Licenses pre-accepted for: $sdk_dir"
-            fi
-        }
-        
-        # Monitor for SDK creation and auto-accept licenses
-        while true; do
-            # Check buildozer's default SDK path
-            if [ -d "$HOME/.buildozer/android/platform/android-sdk" ]; then
-                accept_all_licenses "$HOME/.buildozer/android/platform/android-sdk"
-            fi
-            
-            # Check for any other android-sdk directories
-            find "$HOME" -name "android-sdk" -type d 2>/dev/null | while read sdk_path; do
-                accept_all_licenses "$sdk_path"
-            done
-            
-            sleep 2
-        done &
-        LICENSE_PID=$!
-        
-        # Run buildozer with automatic "yes" responses
-        echo "🚀 Starting APK build with automatic license acceptance..."
-        
-        # Use expect to automatically answer "y" to all prompts
-        sudo apt-get install -y expect
-        
-        expect << 'EXPECT_EOF'
-        set timeout -1
-        spawn buildozer android debug
-        
-        expect {
-            "Accept? (y/N):" {
-                send "y\r"
-                exp_continue
-            }
-            "Do you accept the license" {
-                send "y\r"
-                exp_continue
-            }
-            "y/N" {
-                send "y\r"
-                exp_continue
-            }
-            eof
-        }
-        EXPECT_EOF
-        
-        # Kill the license monitoring process
-        kill $LICENSE_PID 2>/dev/null || true
-        
-        echo "✅ APK build completed!"
-        EOF
-        
-        chmod +x accept_licenses.sh
-        ./accept_licenses.sh
+        mkdir -p $HOME/.android/licenses
+        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > $HOME/.android/licenses/android-sdk-license
+        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> $HOME/.android/licenses/android-sdk-license
 
-    - name: Find and List APK Files
+    - name: Build APK
       run: |
-        echo "🔍 Searching for APK files..."
-        echo "📁 Current directory contents:"
-        ls -la
-        
-        echo "📁 Checking bin/ directory:"
-        if [ -d "bin" ]; then
-          ls -la bin/
-        else
-          echo "❌ bin/ directory not found"
-        fi
-        
-        echo "📁 Searching for .apk files everywhere:"
-        find . -name "*.apk" -type f 2>/dev/null | head -20
-        
-        echo "📁 Checking .buildozer directory:"
-        find .buildozer -name "*.apk" -type f 2>/dev/null | head -10
-        
-        echo "📁 Checking common buildozer output locations:"
-        find . -path "*/.buildozer/android/platform/build-*" -name "*.apk" 2>/dev/null | head -10
-        find . -path "*/.buildozer/android/app" -name "*.apk" 2>/dev/null | head -10
+        export JAVA_HOME=$JAVA_HOME
+        buildozer android debug --verbose
 
-    - name: Copy APK to bin directory
+    - name: Upload APK
       run: |
-        # Create bin directory if it doesn't exist
-        mkdir -p bin
-        
-        # Find the APK file
+        mkdir -p output
         APK_FILE=$(find . -name "*.apk" -type f | head -1)
-        
         if [ -n "$APK_FILE" ]; then
-          echo "✅ Found APK: $APK_FILE"
-          cp "$APK_FILE" bin/
-          echo "✅ Copied APK to bin/ directory"
-          ls -la bin/
+          cp "$APK_FILE" output/snake-game.apk
+          echo "✅ APK created successfully!"
         else
-          echo "❌ No APK file found!"
+          echo "❌ No APK found"
           exit 1
         fi
 
-    - name: Upload APK
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: snake-game-apk
-        path: bin/*.apk
+        path: output/snake-game.apk
