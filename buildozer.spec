@@ -19,7 +19,7 @@ source.include_exts = py,png,jpg,kv,atlas,wav,mp3
 version = 1.0
 
 # (list) Application requirements
-requirements = python3,kivy,kivymd,kivmob,plyer,requests,pillow
+   requirements = python3,kivy,kivymd,android,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip,plyer,requests,pillow
 
 # (str) Presplash of the application
 presplash.filename = assets/images/presplash.png
