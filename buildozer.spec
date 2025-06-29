@@ -19,7 +19,7 @@ source.include_exts = py,png,jpg,kv,atlas,wav,mp3
 version = 1.0
 
 # (list) Application requirements
-   requirements = python3,kivy,kivymd,android,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip,plyer,requests,pillow
+requirements = python3,kivy,kivymd,android,jnius,https://github.com/MichaelStott/KivMob/archive/refs/heads/master.zip,plyer,requests,pillow
 
 # (str) Presplash of the application
 presplash.filename = assets/images/presplash.png
@@ -44,7 +44,7 @@ warn_on_root = 1
 [android]
 
 # (str) Android SDK version to use
-api = 30
+api = 28
 
 # (str) Android NDK version to use
 ndk = 23b
@@ -73,6 +73,9 @@ android.copy_libs = 1
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 android.arch = armeabi-v7a
 
+# (bool) Enable AndroidX support
+android.enable_androidx = True
+
 # (list) Gradle dependencies to add
 android.gradle_dependencies = com.google.android.gms:play-services-ads:22.0.0
 
@@ -80,4 +83,4 @@ android.gradle_dependencies = com.google.android.gms:play-services-ads:22.0.0
 android.add_src = java/
 
 [buildozer:1]
-line_length = 100 
+line_length = 100
